@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
+from ..utils.ai_utils import PROMPT
+import json
 
 bitrate_map = {
     240: "400k",
@@ -396,3 +398,123 @@ def crop_video(
     stream.overwrite_output().run()
 
     return output_path
+
+def detect_video_vulnerability(message_tool, video_path, prompt=None):
+    """
+    Detects vulnerabilities in a video by analyzing it through an AI model.
+    
+    This function reads a video file and passes it to a message tool (AI model
+    interface) for content analysis. The response is parsed from JSON format
+    and returned as a structured result.
+    
+    Parameters
+    ----------
+    message_tool : callable
+        A function that accepts (video_stream, prompt) and returns either:
+        - str: Raw text response (e.g., JSON string wrapped in markdown)
+        - dict: Parsed API response with structure:
+            - OpenAI/OpenRouter format: {'choices': [{'message': {'content': str}}]}
+            - DashScope format: {'output': {'choices': [{'message': {'content': str}}]}}
+        
+        Expected signature:
+            def message_tool(video_stream: BinaryIO, prompt: str) -> Union[str, dict]:
+                '''
+                Process video and prompt through an AI model.
+                
+                Parameters
+                ----------
+                video_stream : BinaryIO
+                    File-like object opened in binary read mode (rb).
+                    Must support .read() method returning bytes.
+                prompt : str
+                    Text prompt/instruction for the AI model.
+                    
+                Returns
+                -------
+                str or dict
+                    Model response as string (preferred) or raw API dict.
+                '''
+                pass
+    
+    video_path : str or Path
+        Path to the video file to analyze. Must exist and be readable.
+    
+    prompt : str, optional
+        Custom prompt for the analysis. If None, uses module-level PROMPT.
+    
+    Returns
+    -------
+    dict or str
+        Parsed JSON result as dict if successful, or raw response string
+        if JSON parsing fails.
+    
+    Examples
+    --------
+    Using with Gemini:
+    
+        def gemini_message(video_stream, prompt):
+            contents = [...]  # Build Gemini contents
+            response = client.models.generate_content(
+                model="gemini-2.5-flash", 
+                contents=contents
+            )
+            return response.candidates[0].content.parts[0].text
+        
+        result = detect_video_vulnerability(
+            gemini_message, 
+            "video.mp4", 
+            "Analyze this video for safety issues"
+        )
+    
+    Using with OpenRouter/Qwen:
+    
+        def openrouter_message(video_stream, prompt):
+            video_bytes = base64.b64encode(video_stream.read()).decode()
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                json={...}
+            )
+            return response.json()['choices'][0]['message']['content']
+        
+        result = detect_video_vulnerability(
+            openrouter_message,
+            "video.mp4"
+        )
+    """
+    if not all([message_tool, video_path]):
+        return None
+    
+    if not prompt:
+        prompt = PROMPT
+
+    video = Path(video_path)
+    if not video.exists():
+        print("Video file not found")
+        return None
+
+    with open(video, "rb") as video_stream:
+        response = message_tool(video_stream, prompt)
+    
+    if isinstance(response, dict):
+        if 'output' in response and 'choices' in response['output']:
+            response_text = response['output']['choices'][0]['message']['content']
+        elif 'choices' in response:
+            response_text = response['choices'][0]['message']['content']
+        else:
+            print("API Response:", json.dumps(response, indent=2))
+            return response
+    else:
+        response_text = response
+    
+    if "```json" in response_text:
+        json_str = response_text.split("```json")[1].split("```")[0].strip()
+    elif "```" in response_text:
+        json_str = response_text.split("```")[1].split("```")[0].strip()
+    else:
+        json_str = response_text
+    
+    try:
+        result = json.loads(json_str)
+        return result
+    except json.JSONDecodeError:
+        return response_text
