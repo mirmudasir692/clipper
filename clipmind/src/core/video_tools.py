@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
 from ..utils.ai_utils import VULNERABILITY_PROMPT, VIDEO_SUMMARIZATION_PROMPT, SUBTITLE_GENERATION_PROMPT
 import json
+import re
 
 bitrate_map = {
     240: "400k",
@@ -670,3 +671,133 @@ def video_phash(video_path, hash_size=16, num_frames=5):
         return np.zeros(hash_size * hash_size * num_frames, dtype=np.uint8)
 
     return np.concatenate(hashes)
+
+def convert_video_format(input_path: str, output_path: str, video_codec= None, audio_codec= None) -> bool:
+    """
+    Convert video format with validated encoder detection.
+    """
+    if not os.path.exists(input_path):
+        print(f"Input not found: {input_path}")
+        return False
+    
+    # Treat empty strings as None
+    if video_codec == "":
+        video_codec = None
+    if audio_codec == "":
+        audio_codec = None
+    
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
+        
+        encoders_list = subprocess.run(
+            ["ffmpeg", "-encoders"], 
+            capture_output=True, text=True
+        ).stdout
+        
+        def has_encoder(name):
+            return name in encoders_list
+        
+        ext = os.path.splitext(output_path)[1].lower()
+        
+        if video_codec is None:
+            if ext in [".mpg", ".mpeg", ".vob"]:
+                video_codec = "mpeg2video"
+            elif ext == ".webm":
+                video_codec = "libvpx-vp9"
+            else:
+                if has_encoder("libopenh264"):
+                    video_codec = "libopenh264"
+                elif has_encoder("libx264"):
+                    video_codec = "libx264"
+                elif has_encoder("mpeg4"):
+                    video_codec = "mpeg4"
+                else:
+                    video_codec = "copy"
+        
+        if video_codec != "copy" and not has_encoder(video_codec):
+            print(f"Video encoder '{video_codec}' not found, trying fallbacks...")
+            if has_encoder("mpeg4"):
+                video_codec = "mpeg4"
+            else:
+                video_codec = "copy"
+        
+        if audio_codec is None:
+            if ext in [".mpg", ".mpeg", ".vob"]:
+                if has_encoder("mp2"):
+                    audio_codec = "mp2"
+                elif has_encoder("ac3"):
+                    audio_codec = "ac3"
+                elif has_encoder("libmp3lame"):
+                    audio_codec = "libmp3lame"
+                else:
+                    audio_codec = "copy"
+            elif ext == ".avi":
+                audio_codec = "libmp3lame" if has_encoder("libmp3lame") else "ac3"
+            elif ext == ".webm":
+                audio_codec = "libopus" if has_encoder("libopus") else "libvorbis"
+            else:
+                if has_encoder("aac"):
+                    audio_codec = "aac"
+                elif has_encoder("libmp3lame"):
+                    audio_codec = "libmp3lame"
+                else:
+                    audio_codec = "copy"
+        
+        if audio_codec != "copy" and not has_encoder(audio_codec):
+            print(f"Audio encoder '{audio_codec}' not found, using 'copy'")
+            audio_codec = "copy"
+        
+        cmd = [
+            "ffmpeg", "-y", "-i", input_path,
+            "-map", "0:v:0?",
+            "-map", "0:a:0?",
+            "-c:v", video_codec,
+            "-c:a", audio_codec,
+            "-map_metadata", "0"
+        ]
+        
+        if video_codec in ["libx264", "libopenh264"]:
+            cmd.extend(["-preset", "medium", "-crf", "23", "-pix_fmt", "yuv420p"])
+        elif video_codec == "mpeg2video":
+            cmd.extend(["-b:v", "3000k", "-maxrate", "3500k", "-bufsize", "4000k", "-g", "15"])
+        elif video_codec == "mpeg4":
+            cmd.extend(["-q:v", "3", "-pix_fmt", "yuv420p"])
+        elif video_codec == "libvpx-vp9":
+            cmd.extend(["-b:v", "0", "-crf", "31", "-deadline", "good"])
+        
+        if audio_codec == "mp2":
+            cmd.extend(["-b:a", "224k"])
+        elif audio_codec == "ac3":
+            cmd.extend(["-b:a", "192k"])
+        elif audio_codec == "aac":
+            cmd.extend(["-b:a", "192k"])
+        elif audio_codec == "libmp3lame":
+            cmd.extend(["-q:a", "2"])
+        
+        if ext in [".mp4", ".m4v", ".mov"]:
+            cmd.extend(["-movflags", "+faststart"])
+        
+        # Subtitles
+        if ext in [".mp4", ".m4v", ".mov"]:
+            cmd.extend(["-c:s", "mov_text"])
+        elif ext == ".mkv":
+            cmd.extend(["-c:s", "copy"])
+        else:
+            cmd.extend(["-sn"])
+        
+        cmd.append(output_path)
+        
+        result = subprocess.run(cmd, check=True, capture_output=True)
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        err = e.stderr.decode()
+        for line in err.split('\n'):
+            if "Error" in line or "Unknown" in line:
+                print(f"FFmpeg: {line.strip()}")
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        return False
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
