@@ -1,34 +1,62 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "clipmind"
 version = "1.0.0"
-description = "A simple and efficient Python tool to extract audio from video files using FFmpeg"
+description = "A versatile video and audio processing toolbox featuring AI analysis, HLS streaming, and Redis caching."
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 license = { text = "MIT" }
-
 authors = [
-    { name = "Mudasir", email = "your_email@example.com" }
+    { name = "Mir Mudasir", email = "mirmudasir692@gmai.com" }
 ]
-
-keywords = ["video", "audio", "ffmpeg", "converter", "media"]
-
+maintainers = [
+    { name = "Mir Mudasir", email = "mirmudasir692@gmai.com" }
+]
+keywords = [
+    "video", "audio", "ffmpeg", "converter", "media", "ai", "hls", "streaming", "redis", "urdu"
+]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent"
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Sound/Audio"
 ]
 
-dynamic = ["dependencies"]
+dependencies = [
+    "ffmpeg-python>=0.2.0",
+    "google-genai>=1.0.0",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "redis>=5.0.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.25.0",
+    "python-bidi>=0.4.2",
+    "arabic-reshaper>=3.0.0"
+]
 
-[tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
-
-[tool.setuptools.packages.find]
-where = ["."]
+[project.urls]
+Homepage = "https://github.com/mirmudasir692/clipmind"
+Documentation = "https://github.com/mirmudasir692/clipmind#readme"
+Repository = "https://github.com/mirmudasir692/clipmind.git"
+Issues = "https://github.com/mirmudasir692/clipmind/issues"
 
 [project.scripts]
 clipmind = "clipmind.cli.interface:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["clipmind*"]
+
+[tool.setuptools]
+package-data = {"clipmind" = ["py.typed"]}

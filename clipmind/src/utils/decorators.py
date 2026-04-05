@@ -49,25 +49,37 @@ def redis_store_process(store, ttl=None):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            # Generate a unique tracking ID for this specific invocation
             execution_id = str(uuid.uuid4())
+            # Define a common prefix for all Redis keys related to this run
             base_key = f"{func.__name__}:{execution_id}"
+            
+            # Persist original input arguments for debugging or audit trails
             store.set(f"{base_key}:input", {
                 "args": args,
                 "kwargs": kwargs
             }, ttl=ttl)
+            
+            # Mark the process as 'started' in the metadata store
             store.set(f"{base_key}:meta", {
                 "status": "started",
                 "timestamp": time.time()
             }, ttl=ttl)
+            
             try:
+                # Execute the actual function
                 result = func(*args, **kwargs)
+                
+                # On success, log the result and completion time
                 store.set(f"{base_key}:result", {
                     "status": "completed",
                     "result": result,
                     "completed_at": time.time()
                 }, ttl=ttl)
                 return result
+                
             except Exception as e:
+                # On failure, log the error message and failure time before re-raising
                 store.set(f"{base_key}:error", {
                     "status": "failed",
                     "error": str(e),

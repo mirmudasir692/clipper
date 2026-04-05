@@ -1,3 +1,8 @@
+"""
+Standard HLS resolution profiles including target bitrates and bandwidth requirements.
+Used by the adaptive video chunking tools to generate standardized output streams.
+"""
+
 RESOLUTION_PROFILES = {
     '240p': {'width': 426, 'height': 240, 'video_bitrate': '400k', 'audio_bitrate': '64k', 'bandwidth': 500000},
     '360p': {'width': 640, 'height': 360, 'video_bitrate': '800k', 'audio_bitrate': '96k', 'bandwidth': 1000000},

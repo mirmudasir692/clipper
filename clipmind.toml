@@ -1,0 +1,32 @@
+# ClipMind Configuration Tool
+# This file allows you to customize default behaviors for the ClipMind video processing tool.
+
+[general]
+# The default output format for audio extraction. Supported: "mp3", "wav".
+default_audio_format = "mp3"
+
+# The directory where processed files (audio, thumbnails, etc.) will be stored by default.
+output_directory = "output"
+
+[video]
+# Default resolution for single-resolution conversions.
+default_resolution = "720p"
+
+# Preferred video encoders in order of priority. 
+# ClipMind will pick the first available one from the list.
+encoder_priority = ["libx264", "libopenh264", "h264_vaapi"]
+
+[ai]
+# AI provider and model settings for video analysis (vulnerability detection, summarization, subtitles).
+# These settings require an appropriate API key and provider setup.
+provider = "openai" # "openai", "openrouter", "google"
+model = "gpt-4-vision-preview" # For OpenAI
+# model = "gemini-1.5-pro" # For Google
+
+# The default prompt to use for general video summarization if none is provided.
+default_summary_prompt = "Summarize the key events and visual elements in this video."
+
+[hls]
+# Default settings for HLS adaptive bitrate streaming chunking.
+segment_duration = 10 # seconds
+enabled_resolutions = ["360p", "720p", "1080p"]

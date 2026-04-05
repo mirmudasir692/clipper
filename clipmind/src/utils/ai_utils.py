@@ -1,3 +1,10 @@
+"""
+This module contains standard AI prompts and utility strings used for video analysis tasks.
+These prompts are designed to be sent to high-level vision/language models (like Gemini) 
+to perform specific tasks such as safety analysis, summarization, and subtitle generation.
+"""
+
+# Prompt for detecting safety vulnerabilities and policy violations in video and audio content.
 VULNERABILITY_PROMPT = """
 ## Role
 You are a Multi-Modal Video Content Safety Analyzer. Your task is to analyze video streams **and synchronized audio** frame-by-frame, segment-by-segment, and channel-by-channel to detect potentially inappropriate, harmful, or policy-violating content across **both visual and auditory dimensions**.
@@ -231,6 +238,7 @@ When both video and audio provide signals:
   }
 }
 """
+# Prompt for generating intelligent, temporally-aware summaries of video content.
 VIDEO_SUMMARIZATION_PROMPT = """
 ## Role
 You are a Video Content Summarization Engine. Your task is to analyze video streams frame-by-frame and segment-by-segment to generate intelligent, temporally-aware summaries that capture key events, visual narratives, and semantic content.
@@ -369,6 +377,7 @@ Return structured JSON summary:
   }
 }
 """
+# Prompt for generating accurate, time-synchronized subtitles in the source language.
 SUBTITLE_GENERATION_PROMPT = """
 ## Role
 You are an Intelligent Subtitle Generation Engine. Your task is to analyze video audio and generate accurate, time-synchronized subtitles in the original language of the audio (auto-detected), preserving all knowledge, context, and semantic nuance from the spoken content.
